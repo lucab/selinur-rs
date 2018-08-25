@@ -9,7 +9,7 @@ extern crate libc;
 extern crate openat;
 
 pub mod errors;
-pub mod sysfs;
+pub mod sys;
 mod kernel;
 
 pub use self::kernel::has_selinuxfs;
