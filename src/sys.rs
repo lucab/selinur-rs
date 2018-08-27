@@ -1,6 +1,6 @@
 //! Support for `selinuxfs`, main OS interface for global SELinux state.
 
-use super::errors;
+use super::errors::{self, ResultExt};
 use openat;
 use std::{fs, path};
 
@@ -46,5 +46,63 @@ impl SELinuxFs {
             Some(b'1') => Ok(true),
             _ => bail!("unable to detect enforcing mode"),
         }
+    }
+
+    /// Whether the kernel denies unknown object classes or permissions.
+    pub fn deny_unknown(&self) -> errors::Result<bool> {
+        let mut fp = self.dirfd.open_file("deny_unknown")?;
+        let mut buf = vec![b'0'];
+        fp.read_exact(&mut buf)?;
+        match buf.get(0) {
+            Some(b'0') => Ok(false),
+            Some(b'1') => Ok(true),
+            _ => bail!("unable to detect deny_unknown mode"),
+        }
+    }
+
+    /// Whether the kernel rejects unknown object classes or permissions.
+    pub fn reject_unknown(&self) -> errors::Result<bool> {
+        let mut fp = self.dirfd.open_file("reject_unknown")?;
+        let mut buf = vec![b'0'];
+        fp.read_exact(&mut buf)?;
+        match buf.get(0) {
+            Some(b'0') => Ok(false),
+            Some(b'1') => Ok(true),
+            _ => bail!("unable to detect reject_unknown mode"),
+        }
+    }
+
+    /// Whether Multi-Level Security (MLS) support is enabled.
+    pub fn mls_enabled(&self) -> errors::Result<bool> {
+        let mut fp = self.dirfd.open_file("mls")?;
+        let mut buf = vec![b'0'];
+        fp.read_exact(&mut buf)?;
+        match buf.get(0) {
+            Some(b'0') => Ok(false),
+            Some(b'1') => Ok(true),
+            _ => bail!("unable to detect mls mode"),
+        }
+    }
+
+    /// Whether the kernel is only checking application-requested
+    /// protection on mmap/mprotect.
+    pub fn check_requested_protection(&self) -> errors::Result<bool> {
+        let mut fp = self.dirfd.open_file("checkreqprot")?;
+        let mut buf = vec![b'0'];
+        fp.read_exact(&mut buf)?;
+        match buf.get(0) {
+            Some(b'0') => Ok(false),
+            Some(b'1') => Ok(true),
+            _ => bail!("unable to detect checkreqprot mode"),
+        }
+    }
+
+    /// Policy format version supported by the current kernel.
+    pub fn policy_version(&self) -> errors::Result<u32> {
+        let mut fp = self.dirfd.open_file("policyvers")?;
+        let mut val = String::with_capacity(4);
+        fp.read_to_string(&mut val)?;
+        val.parse()
+            .chain_err(|| "failed to parse policy version integer")
     }
 }
