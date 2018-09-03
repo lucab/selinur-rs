@@ -1,6 +1,7 @@
 //! Support for `selinuxfs`, main OS interface for global SELinux state.
 
 use super::errors::{self, ResultExt};
+use nix;
 use openat;
 use std::{collections, fs, io, path};
 
@@ -34,6 +35,18 @@ impl SELinuxFs {
         let dirfd = unsafe { openat::Dir::from_raw_fd(fp.into_raw_fd()) };
         let fs = Self { dirfd };
         Ok(fs)
+    }
+
+    /// Mount a new `SELinuxFs` instance at path, and return it.
+    ///
+    /// This requires privileges to mount (i.e. `CAP_SYS_ADMIN`)
+    /// and kernel support.
+    pub fn mount_fs<P: AsRef<path::Path>>(fspath: P) -> errors::Result<Self> {
+        let fsflags = nix::mount::MsFlags::empty();
+        const NONE: Option<&'static [u8]> = None;
+        nix::mount::mount(NONE, &*fspath.as_ref(), Some("selinuxfs"), fsflags, NONE)?;
+        let fp = fs::File::open(fspath.as_ref())?;
+        Self::from_file(fp)
     }
 
     /// Whether the kernel is in SELinux enforcing mode.

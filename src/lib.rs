@@ -6,6 +6,7 @@ extern crate errno;
 #[macro_use]
 extern crate error_chain;
 extern crate libc;
+extern crate nix;
 extern crate openat;
 
 pub mod errors;
