@@ -5,7 +5,7 @@ use nix;
 use openat;
 use std::{collections, fs, io, path};
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 
 /// Default SELinux FS mountpoint.
@@ -192,5 +192,28 @@ impl SELinuxFs {
             boolset.insert(bfile.file_name().to_string_lossy().into_owned());
         }
         Ok(boolset)
+    }
+
+    /// Commit any pending SELinux booleans.
+    pub fn commit_pending_bools(&self) -> errors::Result<()> {
+        let mut commit_file = self.dirfd.update_file("commit_pending_bools", 0o0200)?;
+        commit_file.write_all(&[b'1'])?;
+        commit_file.flush()?;
+        drop(commit_file);
+        Ok(())
+    }
+
+    /// Set an SELinux boolean to a new (pending) value.
+    ///
+    /// This only stages a new boolean value, `commit_pending_bools`
+    /// must be called to make any change effective.
+    pub fn set_sebool_pending<T: AsRef<str>>(&self, name: T, value: bool) -> errors::Result<()> {
+        let booldir = self.dirfd.sub_dir("booleans")?;
+        let mut target_bool = booldir.update_file(name.as_ref(), 0o0644)?;
+        let val = if value { b'1' } else { b'0' };
+        target_bool.write_all(&[val])?;
+        target_bool.flush()?;
+        drop(target_bool);
+        Ok(())
     }
 }
