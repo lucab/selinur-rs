@@ -16,7 +16,7 @@ exclude = [
 errno = "0.2"
 error-chain = {version = "0.12", default-features = false}
 libc = "0.2"
-nix = "0.11"
+nix = "0.19"
 openat = "0.1.16"
 
 [package.metadata.release]
